@@ -18,8 +18,9 @@ const _ = grpc.SupportPackageIsVersion7
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type ChatServiceClient interface {
+	Broadcast(ctx context.Context, in *Message, opts ...grpc.CallOption) (*Empty, error)
 	Join(ctx context.Context, in *JoinMessage, opts ...grpc.CallOption) (ChatService_JoinClient, error)
-	SendMessage(ctx context.Context, in *Message, opts ...grpc.CallOption) (*Empty, error)
+	Publish(ctx context.Context, in *Message, opts ...grpc.CallOption) (*Empty, error)
 }
 
 type chatServiceClient struct {
@@ -28,6 +29,15 @@ type chatServiceClient struct {
 
 func NewChatServiceClient(cc grpc.ClientConnInterface) ChatServiceClient {
 	return &chatServiceClient{cc}
+}
+
+func (c *chatServiceClient) Broadcast(ctx context.Context, in *Message, opts ...grpc.CallOption) (*Empty, error) {
+	out := new(Empty)
+	err := c.cc.Invoke(ctx, "/chat.ChatService/Broadcast", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
 }
 
 func (c *chatServiceClient) Join(ctx context.Context, in *JoinMessage, opts ...grpc.CallOption) (ChatService_JoinClient, error) {
@@ -62,9 +72,9 @@ func (x *chatServiceJoinClient) Recv() (*Message, error) {
 	return m, nil
 }
 
-func (c *chatServiceClient) SendMessage(ctx context.Context, in *Message, opts ...grpc.CallOption) (*Empty, error) {
+func (c *chatServiceClient) Publish(ctx context.Context, in *Message, opts ...grpc.CallOption) (*Empty, error) {
 	out := new(Empty)
-	err := c.cc.Invoke(ctx, "/chat.ChatService/SendMessage", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/chat.ChatService/Publish", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -75,8 +85,9 @@ func (c *chatServiceClient) SendMessage(ctx context.Context, in *Message, opts .
 // All implementations must embed UnimplementedChatServiceServer
 // for forward compatibility
 type ChatServiceServer interface {
+	Broadcast(context.Context, *Message) (*Empty, error)
 	Join(*JoinMessage, ChatService_JoinServer) error
-	SendMessage(context.Context, *Message) (*Empty, error)
+	Publish(context.Context, *Message) (*Empty, error)
 	mustEmbedUnimplementedChatServiceServer()
 }
 
@@ -84,11 +95,14 @@ type ChatServiceServer interface {
 type UnimplementedChatServiceServer struct {
 }
 
+func (UnimplementedChatServiceServer) Broadcast(context.Context, *Message) (*Empty, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Broadcast not implemented")
+}
 func (UnimplementedChatServiceServer) Join(*JoinMessage, ChatService_JoinServer) error {
 	return status.Errorf(codes.Unimplemented, "method Join not implemented")
 }
-func (UnimplementedChatServiceServer) SendMessage(context.Context, *Message) (*Empty, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method SendMessage not implemented")
+func (UnimplementedChatServiceServer) Publish(context.Context, *Message) (*Empty, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Publish not implemented")
 }
 func (UnimplementedChatServiceServer) mustEmbedUnimplementedChatServiceServer() {}
 
@@ -101,6 +115,24 @@ type UnsafeChatServiceServer interface {
 
 func RegisterChatServiceServer(s grpc.ServiceRegistrar, srv ChatServiceServer) {
 	s.RegisterService(&ChatService_ServiceDesc, srv)
+}
+
+func _ChatService_Broadcast_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(Message)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ChatServiceServer).Broadcast(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/chat.ChatService/Broadcast",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ChatServiceServer).Broadcast(ctx, req.(*Message))
+	}
+	return interceptor(ctx, in, info, handler)
 }
 
 func _ChatService_Join_Handler(srv interface{}, stream grpc.ServerStream) error {
@@ -124,20 +156,20 @@ func (x *chatServiceJoinServer) Send(m *Message) error {
 	return x.ServerStream.SendMsg(m)
 }
 
-func _ChatService_SendMessage_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _ChatService_Publish_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(Message)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ChatServiceServer).SendMessage(ctx, in)
+		return srv.(ChatServiceServer).Publish(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/chat.ChatService/SendMessage",
+		FullMethod: "/chat.ChatService/Publish",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ChatServiceServer).SendMessage(ctx, req.(*Message))
+		return srv.(ChatServiceServer).Publish(ctx, req.(*Message))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -150,8 +182,12 @@ var ChatService_ServiceDesc = grpc.ServiceDesc{
 	HandlerType: (*ChatServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
-			MethodName: "SendMessage",
-			Handler:    _ChatService_SendMessage_Handler,
+			MethodName: "Broadcast",
+			Handler:    _ChatService_Broadcast_Handler,
+		},
+		{
+			MethodName: "Publish",
+			Handler:    _ChatService_Publish_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{

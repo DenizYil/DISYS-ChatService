@@ -37,8 +37,13 @@ func Join() {
 	}
 }
 
-func SendMessage(message string) {
-	_, err := client.SendMessage(ctx, &chat.Message{User: name, Content: message})
+func Publish(message string) {
+	if len(message) > 128 {
+		log.Fatal("The message must not be above 128 characters!")
+		return
+	}
+
+	_, err := client.Publish(ctx, &chat.Message{User: name, Content: message})
 
 	if err != nil {
 		log.Fatalf("Could not send the message.. Error: %s", err)
@@ -69,6 +74,6 @@ func main() {
 
 	scanner := bufio.NewScanner(os.Stdin)
 	for scanner.Scan() {
-		go SendMessage(scanner.Text())
+		go Publish(scanner.Text())
 	}
 }

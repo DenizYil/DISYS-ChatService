@@ -1,10 +1,9 @@
 package chat
 
 import (
+	"golang.org/x/net/context"
 	"log"
 	"sync"
-
-	"golang.org/x/net/context"
 )
 
 type Server struct {
@@ -12,6 +11,15 @@ type Server struct {
 }
 
 var clients []ChatService_JoinServer = make([]ChatService_JoinServer, 0)
+
+func (s *Server) Broadcast(ctx context.Context, message *Message) (*Empty, error) {
+
+	for _, client := range clients {
+		client.Send(message)
+	}
+
+	return &Empty{}, nil
+}
 
 func (s *Server) Join(message *JoinMessage, stream ChatService_JoinServer) error {
 
@@ -28,12 +36,8 @@ func (s *Server) Join(message *JoinMessage, stream ChatService_JoinServer) error
 	return nil
 }
 
-func (s *Server) SendMessage(ctx context.Context, message *Message) (*Empty, error) {
+
+func (s *Server) Publish(ctx context.Context, message *Message) (*Empty, error) {
 	log.Printf("%s >> %s", message.User, message.Content)
-
-	for _, client := range clients {
-		client.Send(message)
-	}
-
-	return &Empty{}, nil
+	return s.Broadcast(ctx, message)
 }

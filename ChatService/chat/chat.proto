@@ -13,10 +13,10 @@ message JoinMessage {
 }
 
 message Empty {
-
 }
 
 service ChatService {
+    rpc Broadcast (Message) returns (Empty);
     rpc Join (JoinMessage) returns (stream Message);
-    rpc SendMessage (Message) returns (Empty);
+    rpc Publish (Message) returns (Empty);
 }

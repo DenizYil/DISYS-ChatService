@@ -6,6 +6,7 @@ import (
 	"flag"
 	"log"
 	"os"
+	"strconv"
 
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
@@ -17,6 +18,7 @@ import (
 var name string
 var client chat.ChatServiceClient
 var ctx context.Context
+var lamport int32 = 0
 
 func Join() {
 	stream, _ := client.Join(context.Background(), &chat.JoinMessage{User: name})
@@ -28,13 +30,22 @@ func Join() {
 			break
 		}
 
+		lamport = MaxInt(lamport, response.Lamport) + 1
+
 		if response.User == "" {
-			log.Default().Printf(">> %s", response.Content)
+			log.Default().Printf("(%s) >> %s", strconv.Itoa(int(lamport)), response.Content)
 			continue
 		}
 
-		log.Default().Printf("%s >> %s", response.User, response.Content)
+		log.Default().Printf("(%s, %s) >> %s", strconv.Itoa(int(lamport)), response.User, response.Content)
 	}
+}
+
+func MaxInt(a int32, b int32) (int32){
+	if a > b {
+		return a
+	}
+	return b
 }
 
 func Publish(message string) {
@@ -43,7 +54,8 @@ func Publish(message string) {
 		return
 	}
 
-	_, err := client.Publish(ctx, &chat.Message{User: name, Content: message})
+	lamport = lamport + 1
+	_, err := client.Publish(ctx, &chat.Message{User: name, Content: message, Lamport: lamport})
 
 	if err != nil {
 		log.Fatalf("Could not send the message.. Error: %s", err)

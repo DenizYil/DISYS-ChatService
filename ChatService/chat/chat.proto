@@ -6,6 +6,7 @@ option go_package = "./chat";
 message Message {
     string user = 1;
     string content = 2;
+    int32 lamport = 3;
 }
 
 message JoinMessage {

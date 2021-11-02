@@ -14,7 +14,7 @@ type Server struct {
 }
 
 var clients []ChatService_JoinServer = make([]ChatService_JoinServer, 0)
-var lamport int32 = 0
+var lamport int32 = 1
 
 func (s *Server) Broadcast(ctx context.Context, message *Message) (*Empty, error) {
 	atomic.AddInt32(&lamport, 1)

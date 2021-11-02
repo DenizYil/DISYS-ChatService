@@ -19,7 +19,7 @@ import (
 var name string
 var client chat.ChatServiceClient
 var ctx context.Context
-var lamport int32 = 0
+var lamport int32 = 1
 
 func Join() {
 	stream, _ := client.Join(context.Background(), &chat.JoinMessage{User: name})

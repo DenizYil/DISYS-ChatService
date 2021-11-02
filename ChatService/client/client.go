@@ -7,6 +7,7 @@ import (
 	"log"
 	"os"
 	"strconv"
+	"sync/atomic"
 
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
@@ -30,7 +31,7 @@ func Join() {
 			break
 		}
 
-		lamport = MaxInt(lamport, response.Lamport) + 1
+		atomic.StoreInt32(&lamport, MaxInt(lamport, response.Lamport)+1)
 
 		if response.User == "" {
 			log.Default().Printf("(%s) >> %s", strconv.Itoa(int(lamport)), response.Content)
@@ -41,7 +42,7 @@ func Join() {
 	}
 }
 
-func MaxInt(a int32, b int32) (int32){
+func MaxInt(a int32, b int32) int32 {
 	if a > b {
 		return a
 	}
@@ -50,11 +51,16 @@ func MaxInt(a int32, b int32) (int32){
 
 func Publish(message string) {
 	if len(message) > 128 {
-		log.Fatal("The message must not be above 128 characters!")
+		log.Print("The message must not be above 128 characters!")
 		return
 	}
 
-	lamport = lamport + 1
+	if len(message) == 0 {
+		log.Print("The message cannot be empty!")
+		return
+	}
+
+	atomic.AddInt32(&lamport, 1)
 	_, err := client.Publish(ctx, &chat.Message{User: name, Content: message, Lamport: lamport})
 
 	if err != nil {

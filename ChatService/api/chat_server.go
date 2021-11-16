@@ -70,6 +70,13 @@ func (s *Server) Publish(ctx context.Context, message *Message) (*Empty, error) 
 
 func (s *Server) Retrieve(msg *RetrieveMessage, stream Peer_RetrieveServer) error {
 
+	for i := 0; i < len(queueNames); i++ {
+		if msg.User == queueNames[i] || currentHolder == msg.User {
+			 s.Broadcast(ctx, &Message{User:msg.User, Content: " You are already in the queue " + strconv.Itoa(len(queueNames))})
+			return nil
+		}
+	}
+
 	if len(queue) == 0 {
 		currentHolder = msg.User
 		s.Broadcast(ctx, &Message{Content: "The Critical Section has been given away to: " + msg.User})
@@ -86,6 +93,10 @@ func (s *Server) Retrieve(msg *RetrieveMessage, stream Peer_RetrieveServer) erro
 
 func (s *Server) Release(ctx context.Context, msg *ReleaseMessage) (*Empty, error) {
 
+	if queueNames[0] != currentHolder || !isinQue(msg) {
+		s.Broadcast(context.TODO(), &Message{User: msg.User, Content: "You just tried to do something illegal! You cannot release until you entered the Critical Section!"})
+		return &Empty{}, nil
+	}
 
 	mutex.Unlock()
 

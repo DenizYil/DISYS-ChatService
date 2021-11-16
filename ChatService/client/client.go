@@ -18,7 +18,6 @@ var name string
 var client api.PeerClient
 var ctx context.Context
 
-
 func Join() {
 	stream, _ := client.Join(context.Background(), &api.JoinMessage{User: name})
 
@@ -41,11 +40,10 @@ func Publish(message string) {
 		if err != nil {
 			log.Fatalf("Could not send the message.. Error: %s", err)
 		}
-	}else if message == "releaseCS" {
+	} else if message == "releaseCS" {
 		client.Release(ctx, &api.Empty{})
 		client.Retrieve(ctx, &api.RetrieveMessage{})
 	}
-
 
 }
 

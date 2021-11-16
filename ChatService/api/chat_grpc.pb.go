@@ -22,7 +22,7 @@ type PeerClient interface {
 	Join(ctx context.Context, in *JoinMessage, opts ...grpc.CallOption) (Peer_JoinClient, error)
 	Publish(ctx context.Context, in *Message, opts ...grpc.CallOption) (*Empty, error)
 	Retrieve(ctx context.Context, in *RetrieveMessage, opts ...grpc.CallOption) (Peer_RetrieveClient, error)
-	Release(ctx context.Context, in *Empty, opts ...grpc.CallOption) (Peer_ReleaseClient, error)
+	Release(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*Empty, error)
 }
 
 type peerClient struct {
@@ -35,7 +35,7 @@ func NewPeerClient(cc grpc.ClientConnInterface) PeerClient {
 
 func (c *peerClient) Broadcast(ctx context.Context, in *Message, opts ...grpc.CallOption) (*Empty, error) {
 	out := new(Empty)
-	err := c.cc.Invoke(ctx, "/chat.Peer/Broadcast", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/api.Peer/Broadcast", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -43,7 +43,7 @@ func (c *peerClient) Broadcast(ctx context.Context, in *Message, opts ...grpc.Ca
 }
 
 func (c *peerClient) Join(ctx context.Context, in *JoinMessage, opts ...grpc.CallOption) (Peer_JoinClient, error) {
-	stream, err := c.cc.NewStream(ctx, &Peer_ServiceDesc.Streams[0], "/chat.Peer/Join", opts...)
+	stream, err := c.cc.NewStream(ctx, &Peer_ServiceDesc.Streams[0], "/api.Peer/Join", opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -76,7 +76,7 @@ func (x *peerJoinClient) Recv() (*Message, error) {
 
 func (c *peerClient) Publish(ctx context.Context, in *Message, opts ...grpc.CallOption) (*Empty, error) {
 	out := new(Empty)
-	err := c.cc.Invoke(ctx, "/chat.Peer/Publish", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/api.Peer/Publish", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -84,7 +84,7 @@ func (c *peerClient) Publish(ctx context.Context, in *Message, opts ...grpc.Call
 }
 
 func (c *peerClient) Retrieve(ctx context.Context, in *RetrieveMessage, opts ...grpc.CallOption) (Peer_RetrieveClient, error) {
-	stream, err := c.cc.NewStream(ctx, &Peer_ServiceDesc.Streams[1], "/chat.Peer/Retrieve", opts...)
+	stream, err := c.cc.NewStream(ctx, &Peer_ServiceDesc.Streams[1], "/api.Peer/Retrieve", opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -115,36 +115,13 @@ func (x *peerRetrieveClient) Recv() (*RetrieveReply, error) {
 	return m, nil
 }
 
-func (c *peerClient) Release(ctx context.Context, in *Empty, opts ...grpc.CallOption) (Peer_ReleaseClient, error) {
-	stream, err := c.cc.NewStream(ctx, &Peer_ServiceDesc.Streams[2], "/chat.Peer/Release", opts...)
+func (c *peerClient) Release(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*Empty, error) {
+	out := new(Empty)
+	err := c.cc.Invoke(ctx, "/api.Peer/Release", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
-	x := &peerReleaseClient{stream}
-	if err := x.ClientStream.SendMsg(in); err != nil {
-		return nil, err
-	}
-	if err := x.ClientStream.CloseSend(); err != nil {
-		return nil, err
-	}
-	return x, nil
-}
-
-type Peer_ReleaseClient interface {
-	Recv() (*Empty, error)
-	grpc.ClientStream
-}
-
-type peerReleaseClient struct {
-	grpc.ClientStream
-}
-
-func (x *peerReleaseClient) Recv() (*Empty, error) {
-	m := new(Empty)
-	if err := x.ClientStream.RecvMsg(m); err != nil {
-		return nil, err
-	}
-	return m, nil
+	return out, nil
 }
 
 // PeerServer is the server API for Peer service.
@@ -155,7 +132,7 @@ type PeerServer interface {
 	Join(*JoinMessage, Peer_JoinServer) error
 	Publish(context.Context, *Message) (*Empty, error)
 	Retrieve(*RetrieveMessage, Peer_RetrieveServer) error
-	Release(*Empty, Peer_ReleaseServer) error
+	Release(context.Context, *Empty) (*Empty, error)
 	mustEmbedUnimplementedPeerServer()
 }
 
@@ -175,8 +152,8 @@ func (UnimplementedPeerServer) Publish(context.Context, *Message) (*Empty, error
 func (UnimplementedPeerServer) Retrieve(*RetrieveMessage, Peer_RetrieveServer) error {
 	return status.Errorf(codes.Unimplemented, "method Retrieve not implemented")
 }
-func (UnimplementedPeerServer) Release(*Empty, Peer_ReleaseServer) error {
-	return status.Errorf(codes.Unimplemented, "method Release not implemented")
+func (UnimplementedPeerServer) Release(context.Context, *Empty) (*Empty, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Release not implemented")
 }
 func (UnimplementedPeerServer) mustEmbedUnimplementedPeerServer() {}
 
@@ -201,7 +178,7 @@ func _Peer_Broadcast_Handler(srv interface{}, ctx context.Context, dec func(inte
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/chat.Peer/Broadcast",
+		FullMethod: "/api.Peer/Broadcast",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(PeerServer).Broadcast(ctx, req.(*Message))
@@ -240,7 +217,7 @@ func _Peer_Publish_Handler(srv interface{}, ctx context.Context, dec func(interf
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/chat.Peer/Publish",
+		FullMethod: "/api.Peer/Publish",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(PeerServer).Publish(ctx, req.(*Message))
@@ -269,32 +246,29 @@ func (x *peerRetrieveServer) Send(m *RetrieveReply) error {
 	return x.ServerStream.SendMsg(m)
 }
 
-func _Peer_Release_Handler(srv interface{}, stream grpc.ServerStream) error {
-	m := new(Empty)
-	if err := stream.RecvMsg(m); err != nil {
-		return err
+func _Peer_Release_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(Empty)
+	if err := dec(in); err != nil {
+		return nil, err
 	}
-	return srv.(PeerServer).Release(m, &peerReleaseServer{stream})
-}
-
-type Peer_ReleaseServer interface {
-	Send(*Empty) error
-	grpc.ServerStream
-}
-
-type peerReleaseServer struct {
-	grpc.ServerStream
-}
-
-func (x *peerReleaseServer) Send(m *Empty) error {
-	return x.ServerStream.SendMsg(m)
+	if interceptor == nil {
+		return srv.(PeerServer).Release(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/api.Peer/Release",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PeerServer).Release(ctx, req.(*Empty))
+	}
+	return interceptor(ctx, in, info, handler)
 }
 
 // Peer_ServiceDesc is the grpc.ServiceDesc for Peer service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
 var Peer_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "chat.Peer",
+	ServiceName: "api.Peer",
 	HandlerType: (*PeerServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
@@ -304,6 +278,10 @@ var Peer_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "Publish",
 			Handler:    _Peer_Publish_Handler,
+		},
+		{
+			MethodName: "Release",
+			Handler:    _Peer_Release_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{
@@ -315,11 +293,6 @@ var Peer_ServiceDesc = grpc.ServiceDesc{
 		{
 			StreamName:    "Retrieve",
 			Handler:       _Peer_Retrieve_Handler,
-			ServerStreams: true,
-		},
-		{
-			StreamName:    "Release",
-			Handler:       _Peer_Release_Handler,
 			ServerStreams: true,
 		},
 	},

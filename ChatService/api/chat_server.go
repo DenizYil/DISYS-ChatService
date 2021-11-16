@@ -1,25 +1,22 @@
 package api
 
 import (
-	"golang.org/x/net/context"
 	"log"
 	"sync"
+
+	"golang.org/x/net/context"
 )
-
-
 
 type Server struct {
 	UnimplementedPeerServer
 }
 
 var clients []Peer_JoinServer = make([]Peer_JoinServer, 0)
-var queue []Peer_ReleaseServer = make([]Peer_ReleaseServer, 0)
+var queue []Peer_RetrieveServer = make([]Peer_RetrieveServer, 0)
 var mutex sync.Mutex
 var ctx context.Context
 
 func (s *Server) Broadcast(ctx context.Context, message *Message) (*Empty, error) {
-
-
 
 	for _, client := range clients {
 		client.Send(message)
@@ -34,11 +31,10 @@ func (s *Server) Join(message *JoinMessage, stream Peer_JoinServer) error {
 
 	clients = append(clients, stream)
 
-
 	stream.Send(&Message{User: "", Content: "Welcome " + message.User + "! You have connected to the network!"})
 
 	msg := Message{
-		User: "",
+		User:    "",
 		Content: "Participant " + message.User + " joined the server",
 	}
 
@@ -48,7 +44,7 @@ func (s *Server) Join(message *JoinMessage, stream Peer_JoinServer) error {
 		select {
 		case <-stream.Context().Done():
 			msg := Message{
-				User: "",
+				User:    "",
 				Content: "Participant " + message.User + " left the server",
 			}
 			for i, element := range clients {
@@ -69,32 +65,35 @@ func (s *Server) Publish(ctx context.Context, message *Message) (*Empty, error) 
 	return s.Broadcast(ctx, message)
 }
 
-func (s *Server) Retrieve(msg *RetrieveMessage, stream Peer_RetrieveServer) error{
+func (s *Server) Retrieve(msg *RetrieveMessage, stream Peer_RetrieveServer) error {
 
-	mutex.Lock()
 	if len(queue) == 0 {
 		s.Broadcast(ctx, &Message{Content: "The Critical Section has been given away"})
-		return nil
-	}else {
-		queue = append(queue, stream)
+	} else {
 		s.Broadcast(ctx, &Message{Content: "The critical section is in use!"})
-		return nil
 	}
 
+	queue = append(queue, stream)
+	mutex.Lock()
 
+	return nil
 }
 
-func (s *Server) Release(empty *Empty) error {
-		mutex.Unlock()
-		RemoveIndex(queue, stream)
-		return nil
-}
+func (s *Server) Release(ctx context.Context, empty *Empty) (*Empty, error) {
+	mutex.Unlock()
 
-func RemoveIndex(queue []Peer_ReleaseServer, stream Peer_ReleaseServer) []Peer_ReleaseServer {
-	for i := 0; i < len(queue); i++ {
-		if queue[i] == stream{
-			return append(queue[:i], queue[i+1:]...)
-		}
+	queue = RemoveIndex(queue, 0)
+
+	if len(queue) != 0 {
+		mutex.Lock()
+		s.Broadcast(context.TODO(), &Message{Content: "The Critical Section has been given away as there was someone in the queue waiting for it!"})
+	} else {
+		s.Broadcast(context.TODO(), &Message{Content: "The Critical Section is now available for anyone to pick up"})
 	}
-	return queue
+
+	return &Empty{}, nil
+}
+
+func RemoveIndex(s []Peer_RetrieveServer, index int) []Peer_RetrieveServer {
+	return append(s[:index], s[index+1:]...)
 }

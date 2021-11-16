@@ -24,7 +24,7 @@ func main() {
 
 	grpcServer := grpc.NewServer()
 
-	api.RegisterChatServiceServer(grpcServer, &s)
+	api.RegisterPeerServer(grpcServer, &s)
 
 	log.Print("===============================================================================")
 	log.Print("                            Welcome to Chitty-Chat!                            ")

@@ -3,18 +3,17 @@ package api
 import (
 	"golang.org/x/net/context"
 	"log"
-	"strconv"
 	"sync"
 )
 
 
 
 type Server struct {
-	UnimplementedChatServiceServer
+	UnimplementedPeerServer
 }
 
-var clients []ChatService_JoinServer = make([]ChatService_JoinServer, 0)
-var queue []ChatService_JoinServer = make([]ChatService_JoinServer, 0)
+var clients []Peer_JoinServer = make([]Peer_JoinServer, 0)
+var queue []Peer_JoinServer = make([]Peer_JoinServer, 0)
 var mutex sync.Mutex
 
 func (s *Server) Broadcast(ctx context.Context, message *Message) (*Empty, error) {
@@ -28,7 +27,7 @@ func (s *Server) Broadcast(ctx context.Context, message *Message) (*Empty, error
 	return &Empty{}, nil
 }
 
-func (s *Server) Connect(message *JoinMessage, stream ChatService_JoinServer) error {
+func (s *Server) Join(message *JoinMessage, stream Peer_JoinServer) error {
 
 	log.Printf("%s has connected to the server!", message.User)
 
@@ -65,23 +64,36 @@ func (s *Server) Connect(message *JoinMessage, stream ChatService_JoinServer) er
 }
 
 func (s *Server) Publish(ctx context.Context, message *Message) (*Empty, error) {
-	log.Printf("(%s, %s) >> %s", strconv.Itoa(int(message.Lamport)), message.User, message.Content)
+	log.Printf("(%s, %s) >> %s", message.User, message.Content)
 	return s.Broadcast(ctx, message)
 }
 
-func (s *Server) Retrieve(ctx context.Context, in *RetrieveMessage, stream ChatService_JoinServer) (*RetrieveReply, error) {
+func (s *Server) Retrieve(ctx context.Context, in *RetrieveMessage, stream Peer_JoinServer) (*RetrieveReply, error) {
 
-
+	mutex.Lock()
 	if len(queue) == 0 {
 		s.Broadcast(ctx, &Message{Content: "The Critical Section has been given away"})
-		return &RetrieveReply{success: true}
+		return &RetrieveReply{Success: true}, nil
 	}else {
 		queue = append(queue, stream)
 		s.Broadcast(ctx, &Message{Content: "The critical section is in use!"})
+		return &RetrieveReply{Success: false}, nil
 	}
-	mutex.Lock()
+
+
 }
 
-func (s *Server) Release(ctx context.Context, in *Empty) (*Empty, error) {
+func (s *Server) Release(ctx context.Context, in *Empty, stream Peer_JoinServer) (*Empty, error) {
 		mutex.Unlock()
+		RemoveIndex(queue, stream)
+		return &Empty{}, nil
+}
+
+func RemoveIndex(queue []Peer_JoinServer, stream Peer_JoinServer) []Peer_JoinServer {
+	for i := 0; i < len(queue); i++ {
+		if queue[i] == stream{
+			return append(queue[:i], queue[i+1:]...)
+		}
+	}
+	return queue
 }

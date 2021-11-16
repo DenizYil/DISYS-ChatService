@@ -6,7 +6,6 @@ import (
 	"flag"
 	"log"
 	"os"
-	"strconv"
 
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
@@ -16,7 +15,7 @@ import (
 //	log.Printf("Response from server: %s", response.Content)
 
 var name string
-var client api.ChatServiceClient
+var client api.PeerClient
 var ctx context.Context
 
 
@@ -37,7 +36,7 @@ func Join() {
 func Publish(message string) {
 
 	if message == "requestCS" {
-		_, err := client.Publish(ctx, &peer.RetrieveMessage{})
+		_, err := client.Retrieve(ctx, &api.RetrieveMessage{})
 
 		if err != nil {
 			log.Fatalf("Could not send the message.. Error: %s", err)
@@ -67,7 +66,7 @@ func main() {
 
 	defer conn.Close()
 
-	client = api.NewChatServiceClient(conn)
+	client = api.NewPeerClient(conn)
 	ctx = context.Background()
 
 	go Join()

@@ -6,18 +6,30 @@ option go_package = "./chat";
 message Message {
     string user = 1;
     string content = 2;
-    int32 lamport = 3;
 }
 
 message JoinMessage {
     string user = 1;
 }
 
+
+message RetrieveMessage {
+
+}
+
+message RetrieveReply {
+    bool success = 1;
+}
+
+
 message Empty {
 }
 
-service ChatService {
+service Peer {
     rpc Broadcast (Message) returns (Empty);
     rpc Join (JoinMessage) returns (stream Message);
     rpc Publish (Message) returns (Empty);
+    rpc Retrieve(RetrieveMessage) returns (stream RetrieveReply);
+    rpc Release(Empty) returns (Empty);
 }
+

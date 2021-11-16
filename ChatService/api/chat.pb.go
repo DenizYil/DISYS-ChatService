@@ -2,9 +2,9 @@
 // versions:
 // 	protoc-gen-go v1.26.0
 // 	protoc        v3.18.1
-// source: chat/chat.proto
+// source: api/api.proto
 
-package chat
+package api
 
 import (
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
@@ -207,17 +207,17 @@ func file_chat_chat_proto_rawDescGZIP() []byte {
 
 var file_chat_chat_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
 var file_chat_chat_proto_goTypes = []interface{}{
-	(*Message)(nil),     // 0: chat.Message
-	(*JoinMessage)(nil), // 1: chat.JoinMessage
-	(*Empty)(nil),       // 2: chat.Empty
+	(*Message)(nil),     // 0: api.Message
+	(*JoinMessage)(nil), // 1: api.JoinMessage
+	(*Empty)(nil),       // 2: api.Empty
 }
 var file_chat_chat_proto_depIdxs = []int32{
-	0, // 0: chat.ChatService.Broadcast:input_type -> chat.Message
-	1, // 1: chat.ChatService.Join:input_type -> chat.JoinMessage
-	0, // 2: chat.ChatService.Publish:input_type -> chat.Message
-	2, // 3: chat.ChatService.Broadcast:output_type -> chat.Empty
-	0, // 4: chat.ChatService.Join:output_type -> chat.Message
-	2, // 5: chat.ChatService.Publish:output_type -> chat.Empty
+	0, // 0: api.ChatService.Broadcast:input_type -> api.Message
+	1, // 1: api.ChatService.Join:input_type -> api.JoinMessage
+	0, // 2: api.ChatService.Publish:input_type -> api.Message
+	2, // 3: api.ChatService.Broadcast:output_type -> api.Empty
+	0, // 4: api.ChatService.Join:output_type -> api.Message
+	2, // 5: api.ChatService.Publish:output_type -> api.Empty
 	3, // [3:6] is the sub-list for method output_type
 	0, // [0:3] is the sub-list for method input_type
 	0, // [0:0] is the sub-list for extension type_name

@@ -1,7 +1,7 @@
 package main
 
 import (
-	"ChatService/chat"
+	"ChatService/api"
 	"log"
 	"net"
 
@@ -20,15 +20,15 @@ func main() {
 
 	log.Print("Listener registered - setting up server now...")
 
-	s := chat.Server{}
+	s := api.Server{}
 
 	grpcServer := grpc.NewServer()
 
-	chat.RegisterChatServiceServer(grpcServer, &s)
+	api.RegisterChatServiceServer(grpcServer, &s)
 
 	log.Print("===============================================================================")
 	log.Print("                            Welcome to Chitty-Chat!                            ")
-	log.Print("            Users can connect at any time and chat with each other!            ")
+	log.Print("            Users can connect at any time and api with each other!            ")
 	log.Print("===============================================================================")
 
 	err = grpcServer.Serve(listener)

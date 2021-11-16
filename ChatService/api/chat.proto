@@ -16,13 +16,16 @@ message JoinMessage {
 
 
 message RetrieveMessage {
-
+    string user = 1;
 }
 
 message RetrieveReply {
     bool success = 1;
 }
 
+message ReleaseMessage {
+    string user = 1;
+}
 
 message Empty {
 }
@@ -32,6 +35,6 @@ service Peer {
     rpc Join (JoinMessage) returns (stream Message);
     rpc Publish (Message) returns (Empty);
     rpc Retrieve(RetrieveMessage) returns (stream RetrieveReply);
-    rpc Release(Empty) returns (Empty);
+    rpc Release(ReleaseMessage) returns (Empty);
 }
 

@@ -2,6 +2,7 @@ package api
 
 import (
 	"log"
+	"strconv"
 	"sync"
 
 	"golang.org/x/net/context"
@@ -13,8 +14,10 @@ type Server struct {
 
 var clients []Peer_JoinServer = make([]Peer_JoinServer, 0)
 var queue []Peer_RetrieveServer = make([]Peer_RetrieveServer, 0)
+var queueNames []string = make([]string, 0)
 var mutex sync.Mutex
 var ctx context.Context
+var currentHolder string
 
 func (s *Server) Broadcast(ctx context.Context, message *Message) (*Empty, error) {
 
@@ -68,9 +71,11 @@ func (s *Server) Publish(ctx context.Context, message *Message) (*Empty, error) 
 func (s *Server) Retrieve(msg *RetrieveMessage, stream Peer_RetrieveServer) error {
 
 	if len(queue) == 0 {
-		s.Broadcast(ctx, &Message{Content: "The Critical Section has been given away"})
+		currentHolder = msg.User
+		s.Broadcast(ctx, &Message{Content: "The Critical Section has been given away to: " + msg.User})
 	} else {
-		s.Broadcast(ctx, &Message{Content: "The critical section is in use!"})
+		queueNames = append(queueNames, msg.User)
+		s.Broadcast(ctx, &Message{User:msg.User, Content: "The critical section is in use! You have been added to the queue and are waiting: Current number - " + strconv.Itoa(len(queueNames))})
 	}
 
 	queue = append(queue, stream)
@@ -79,14 +84,18 @@ func (s *Server) Retrieve(msg *RetrieveMessage, stream Peer_RetrieveServer) erro
 	return nil
 }
 
-func (s *Server) Release(ctx context.Context, empty *Empty) (*Empty, error) {
+func (s *Server) Release(ctx context.Context, msg *ReleaseMessage) (*Empty, error) {
+
+
 	mutex.Unlock()
 
-	queue = RemoveIndex(queue, 0)
-
 	if len(queue) != 0 {
-		mutex.Lock()
-		s.Broadcast(context.TODO(), &Message{Content: "The Critical Section has been given away as there was someone in the queue waiting for it!"})
+		s.Broadcast(ctx, &Message{Content: "The Critical Section has been released by: " + queueNames[0]})
+		queue = RemovePeer(queue, 0)
+		RemovePeerName(queueNames, 0)
+		s.Broadcast(context.TODO(), &Message{Content: "The Critical Section is now available for the next in the queue to pick up!"})
+		s.Broadcast(ctx, &Message{Content: "The Critical Section has been given away to: " + queueNames[0]})
+		//s.Broadcast(context.TODO(), &Message{Content: "The Critical Section has been given away as there was someone in the queue waiting for it!"})
 	} else {
 		s.Broadcast(context.TODO(), &Message{Content: "The Critical Section is now available for anyone to pick up"})
 	}
@@ -94,6 +103,18 @@ func (s *Server) Release(ctx context.Context, empty *Empty) (*Empty, error) {
 	return &Empty{}, nil
 }
 
-func RemoveIndex(s []Peer_RetrieveServer, index int) []Peer_RetrieveServer {
+func RemovePeer(s []Peer_RetrieveServer, index int) []Peer_RetrieveServer {
 	return append(s[:index], s[index+1:]...)
+}
+func RemovePeerName(s []string, index int) []string {
+	return append(s[:index], s[index+1:]...)
+}
+
+func isinQue(user *ReleaseMessage) bool{
+	for i := 0; i < len(queueNames); i++ {
+		if user.User == queueNames[i] {
+			return true
+		}
+	}
+	return false
 }

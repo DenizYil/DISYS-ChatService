@@ -35,14 +35,13 @@ func Join() {
 func Publish(message string) {
 
 	if message == "requestCS" {
-		_, err := client.Retrieve(ctx, &api.RetrieveMessage{})
+		_, err := client.Retrieve(ctx, &api.RetrieveMessage{User: name})
 
 		if err != nil {
 			log.Fatalf("Could not send the message.. Error: %s", err)
 		}
 	} else if message == "releaseCS" {
-		client.Release(ctx, &api.Empty{})
-		client.Retrieve(ctx, &api.RetrieveMessage{})
+		client.Release(ctx, &api.ReleaseMessage{User: name})
 	}
 
 }

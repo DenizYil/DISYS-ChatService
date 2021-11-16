@@ -1,6 +1,7 @@
 package api
 
 import (
+	"fmt"
 	"log"
 	"strconv"
 	"sync"
@@ -14,8 +15,7 @@ type Server struct {
 
 var clients []Peer_JoinServer = make([]Peer_JoinServer, 0)
 
-var queue []Peer_RetrieveServer = make([]Peer_RetrieveServer, 0)
-var queueNames []string = make([]string, 0)
+var queue []string = make([]string, 0)
 
 var mutex sync.Mutex
 var ctx context.Context = context.TODO()
@@ -44,7 +44,7 @@ func (s *Server) Join(message *JoinMessage, stream Peer_JoinServer) error {
 		Content: "Participant " + message.User + " joined the server",
 	}
 
-	s.Broadcast(nil, &msg)
+	s.Broadcast(ctx, &msg)
 
 	for {
 		select {
@@ -59,28 +59,20 @@ func (s *Server) Join(message *JoinMessage, stream Peer_JoinServer) error {
 					break
 				}
 			}
-			s.Broadcast(nil, &msg)
+			s.Broadcast(ctx, &msg)
 			return nil
 		}
 	}
-
 }
 
-func (s *Server) Publish(ctx context.Context, message *Message) (*Empty, error) {
-	log.Printf("(%s, %s) >> %s", message.User, message.Content)
-	return s.Broadcast(ctx, message)
-}
-
-func (s *Server) Retrieve(msg *RetrieveMessage, stream Peer_RetrieveServer) error {
+func (s *Server) Retrieve(ctx context.Context, msg *RetrieveMessage) (*ResponseMessage, error) {
 	if currentHolder == msg.User {
-		s.Broadcast(ctx, &Message{User: msg.User, Content: " You already have the key! " + strconv.Itoa(len(queueNames))})
-		return nil
+		return &ResponseMessage{Message: "You already have the key!"}, nil
 	}
 
-	for _, name := range queueNames {
+	for i, name := range queue {
 		if msg.User == name {
-			s.Broadcast(ctx, &Message{User: msg.User, Content: " You are already in the queue " + strconv.Itoa(len(queueNames))})
-			return nil
+			return &ResponseMessage{Message: fmt.Sprintf("You are already in the queue... There are %s/%s people in front of you.", strconv.Itoa(len(queue)-(i+1)), strconv.Itoa(len(queue)))}, nil
 		}
 	}
 
@@ -88,20 +80,17 @@ func (s *Server) Retrieve(msg *RetrieveMessage, stream Peer_RetrieveServer) erro
 		currentHolder = msg.User
 		s.Broadcast(ctx, &Message{Content: "The Critical Section has been given away to: " + msg.User})
 	} else {
-		queue = append(queue, stream)
-		queueNames = append(queueNames, msg.User)
-		s.Broadcast(ctx, &Message{User: msg.User, Content: "The critical section is in use! You have been added to the queue and are waiting: Current number - " + strconv.Itoa(len(queueNames))})
+		queue = append(queue, msg.User)
+		s.Broadcast(ctx, &Message{Content: fmt.Sprintf("%s has been added to the queue as the Critical Section is currently occupied by %s", msg.User, currentHolder)})
 	}
 
 	mutex.Lock()
-	return nil
+	return &ResponseMessage{Message: ""}, nil
 }
 
-func (s *Server) Release(ctx context.Context, msg *ReleaseMessage) (*Empty, error) {
-
+func (s *Server) Release(ctx context.Context, msg *ReleaseMessage) (*ResponseMessage, error) {
 	if currentHolder != msg.User {
-		s.Broadcast(ctx, &Message{User: msg.User, Content: "You don't have the critical section"})
-		return &Empty{}, nil
+		return &ResponseMessage{Message: "You don't have the critical section"}, nil
 	}
 
 	mutex.Unlock()
@@ -110,32 +99,19 @@ func (s *Server) Release(ctx context.Context, msg *ReleaseMessage) (*Empty, erro
 
 	if len(queue) != 0 {
 		s.Broadcast(ctx, &Message{Content: "The Critical Section is now available for the next in the queue to pick up!"})
-		s.Broadcast(ctx, &Message{Content: "The Critical Section has been given away to: " + queueNames[0]})
+		s.Broadcast(ctx, &Message{Content: "The Critical Section has been given away to: " + queue[0]})
 
-		currentHolder = queueNames[0]
+		currentHolder = queue[0]
 
-		queue = RemovePeer(queue, 0)
-		queueNames = RemovePeerName(queueNames, 0)
+		queue = RemovePeerName(queue, 0)
 	} else {
 		s.Broadcast(ctx, &Message{Content: "The Critical Section is now available for anyone to pick up"})
 		currentHolder = ""
 	}
 
-	return &Empty{}, nil
+	return &ResponseMessage{Message: ""}, nil
 }
 
-func RemovePeer(s []Peer_RetrieveServer, index int) []Peer_RetrieveServer {
-	return append(s[:index], s[index+1:]...)
-}
 func RemovePeerName(s []string, index int) []string {
 	return append(s[:index], s[index+1:]...)
-}
-
-func IsInQueue(user *ReleaseMessage) bool {
-	for i := 0; i < len(queueNames); i++ {
-		if user.User == queueNames[i] {
-			return true
-		}
-	}
-	return false
 }

@@ -11,9 +11,6 @@ import (
 	"google.golang.org/grpc"
 )
 
-//	response, _ := client.SendMessage(context.Background(), &api.Message{Content: "Hello from the client!"})
-//	log.Printf("Response from server: %s", response.Content)
-
 var name string
 var client api.PeerClient
 var ctx context.Context
@@ -28,22 +25,28 @@ func Join() {
 			break
 		}
 
-		log.Default().Printf("%s >> %s", response.User, response.Content)
+		if response.User == "" {
+			log.Default().Printf("Server >> %s", response.Content)
+		} else {
+			log.Default().Printf("%s >> %s", response.User, response.Content)
+		}
 	}
 }
 
-func Publish(message string) {
-
+func Handle(message string) {
 	if message == "requestCS" {
-		_, err := client.Retrieve(ctx, &api.RetrieveMessage{User: name})
+		resp, _ := client.Retrieve(ctx, &api.RetrieveMessage{User: name})
 
-		if err != nil {
-			log.Fatalf("Could not send the message.. Error: %s", err)
+		if resp.Message != "" {
+			log.Default().Printf("Server >> %s", resp.Message)
 		}
 	} else if message == "releaseCS" {
-		client.Release(ctx, &api.ReleaseMessage{User: name})
-	}
+		resp, _ := client.Release(ctx, &api.ReleaseMessage{User: name})
 
+		if resp.Message != "" {
+			log.Default().Printf("Server >> %s", resp.Message)
+		}
+	}
 }
 
 func main() {
@@ -57,7 +60,7 @@ func main() {
 	conn, err := grpc.Dial(":9000", grpc.WithInsecure())
 
 	if err != nil {
-		log.Fatal("could not connect! %s", err)
+		log.Fatalf("could not connect! %s", err)
 		return
 	}
 
@@ -70,6 +73,6 @@ func main() {
 
 	scanner := bufio.NewScanner(os.Stdin)
 	for scanner.Scan() {
-		go Publish(scanner.Text())
+		go Handle(scanner.Text())
 	}
 }

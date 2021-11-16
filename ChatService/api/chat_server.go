@@ -13,11 +13,14 @@ type Server struct {
 }
 
 var clients []Peer_JoinServer = make([]Peer_JoinServer, 0)
+
 var queue []Peer_RetrieveServer = make([]Peer_RetrieveServer, 0)
 var queueNames []string = make([]string, 0)
+
 var mutex sync.Mutex
-var ctx context.Context
-var currentHolder string
+var ctx context.Context = context.TODO()
+
+var currentHolder string = ""
 
 func (s *Server) Broadcast(ctx context.Context, message *Message) (*Empty, error) {
 
@@ -69,46 +72,53 @@ func (s *Server) Publish(ctx context.Context, message *Message) (*Empty, error) 
 }
 
 func (s *Server) Retrieve(msg *RetrieveMessage, stream Peer_RetrieveServer) error {
+	if currentHolder == msg.User {
+		s.Broadcast(ctx, &Message{User: msg.User, Content: " You already have the key! " + strconv.Itoa(len(queueNames))})
+		return nil
+	}
 
-	for i := 0; i < len(queueNames); i++ {
-		if msg.User == queueNames[i] || currentHolder == msg.User {
-			 s.Broadcast(ctx, &Message{User:msg.User, Content: " You are already in the queue " + strconv.Itoa(len(queueNames))})
+	for _, name := range queueNames {
+		if msg.User == name {
+			s.Broadcast(ctx, &Message{User: msg.User, Content: " You are already in the queue " + strconv.Itoa(len(queueNames))})
 			return nil
 		}
 	}
 
-	if len(queue) == 0 {
+	if currentHolder == "" {
 		currentHolder = msg.User
 		s.Broadcast(ctx, &Message{Content: "The Critical Section has been given away to: " + msg.User})
 	} else {
+		queue = append(queue, stream)
 		queueNames = append(queueNames, msg.User)
-		s.Broadcast(ctx, &Message{User:msg.User, Content: "The critical section is in use! You have been added to the queue and are waiting: Current number - " + strconv.Itoa(len(queueNames))})
+		s.Broadcast(ctx, &Message{User: msg.User, Content: "The critical section is in use! You have been added to the queue and are waiting: Current number - " + strconv.Itoa(len(queueNames))})
 	}
 
-	queue = append(queue, stream)
 	mutex.Lock()
-
 	return nil
 }
 
 func (s *Server) Release(ctx context.Context, msg *ReleaseMessage) (*Empty, error) {
 
-	if queueNames[0] != currentHolder || !isinQue(msg) {
-		s.Broadcast(context.TODO(), &Message{User: msg.User, Content: "You just tried to do something illegal! You cannot release until you entered the Critical Section!"})
+	if currentHolder != msg.User {
+		s.Broadcast(ctx, &Message{User: msg.User, Content: "You don't have the critical section"})
 		return &Empty{}, nil
 	}
 
 	mutex.Unlock()
 
+	s.Broadcast(ctx, &Message{Content: "The Critical Section has been released by: " + msg.User})
+
 	if len(queue) != 0 {
-		s.Broadcast(ctx, &Message{Content: "The Critical Section has been released by: " + queueNames[0]})
-		queue = RemovePeer(queue, 0)
-		RemovePeerName(queueNames, 0)
-		s.Broadcast(context.TODO(), &Message{Content: "The Critical Section is now available for the next in the queue to pick up!"})
+		s.Broadcast(ctx, &Message{Content: "The Critical Section is now available for the next in the queue to pick up!"})
 		s.Broadcast(ctx, &Message{Content: "The Critical Section has been given away to: " + queueNames[0]})
-		//s.Broadcast(context.TODO(), &Message{Content: "The Critical Section has been given away as there was someone in the queue waiting for it!"})
+
+		currentHolder = queueNames[0]
+
+		queue = RemovePeer(queue, 0)
+		queueNames = RemovePeerName(queueNames, 0)
 	} else {
-		s.Broadcast(context.TODO(), &Message{Content: "The Critical Section is now available for anyone to pick up"})
+		s.Broadcast(ctx, &Message{Content: "The Critical Section is now available for anyone to pick up"})
+		currentHolder = ""
 	}
 
 	return &Empty{}, nil
@@ -121,7 +131,7 @@ func RemovePeerName(s []string, index int) []string {
 	return append(s[:index], s[index+1:]...)
 }
 
-func isinQue(user *ReleaseMessage) bool{
+func IsInQueue(user *ReleaseMessage) bool {
 	for i := 0; i < len(queueNames); i++ {
 		if user.User == queueNames[i] {
 			return true

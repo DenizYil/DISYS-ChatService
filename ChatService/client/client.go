@@ -28,7 +28,7 @@ func Join() {
 			break
 		}
 
-		log.Default().Printf("(%s, %s) >> %s", response.User, response.Content)
+		log.Default().Printf("%s >> %s", response.User, response.Content)
 	}
 }
 

@@ -13,8 +13,9 @@ type Server struct {
 }
 
 var clients []Peer_JoinServer = make([]Peer_JoinServer, 0)
-var queue []Peer_JoinServer = make([]Peer_JoinServer, 0)
+var queue []Peer_ReleaseServer = make([]Peer_ReleaseServer, 0)
 var mutex sync.Mutex
+var ctx context.Context
 
 func (s *Server) Broadcast(ctx context.Context, message *Message) (*Empty, error) {
 
@@ -68,28 +69,28 @@ func (s *Server) Publish(ctx context.Context, message *Message) (*Empty, error) 
 	return s.Broadcast(ctx, message)
 }
 
-func (s *Server) Retrieve(ctx context.Context, in *RetrieveMessage, stream Peer_JoinServer) (*RetrieveReply, error) {
+func (s *Server) Retrieve(msg *RetrieveMessage, stream Peer_RetrieveServer) error{
 
 	mutex.Lock()
 	if len(queue) == 0 {
 		s.Broadcast(ctx, &Message{Content: "The Critical Section has been given away"})
-		return &RetrieveReply{Success: true}, nil
+		return nil
 	}else {
 		queue = append(queue, stream)
 		s.Broadcast(ctx, &Message{Content: "The critical section is in use!"})
-		return &RetrieveReply{Success: false}, nil
+		return nil
 	}
 
 
 }
 
-func (s *Server) Release(ctx context.Context, in *Empty, stream Peer_JoinServer) (*Empty, error) {
+func (s *Server) Release(empty *Empty) error {
 		mutex.Unlock()
 		RemoveIndex(queue, stream)
-		return &Empty{}, nil
+		return nil
 }
 
-func RemoveIndex(queue []Peer_JoinServer, stream Peer_JoinServer) []Peer_JoinServer {
+func RemoveIndex(queue []Peer_ReleaseServer, stream Peer_ReleaseServer) []Peer_ReleaseServer {
 	for i := 0; i < len(queue); i++ {
 		if queue[i] == stream{
 			return append(queue[:i], queue[i+1:]...)

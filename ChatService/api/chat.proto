@@ -30,6 +30,6 @@ service Peer {
     rpc Join (JoinMessage) returns (stream Message);
     rpc Publish (Message) returns (Empty);
     rpc Retrieve(RetrieveMessage) returns (stream RetrieveReply);
-    rpc Release(Empty) returns (stream Empty);
+    rpc Release(Empty) returns (Empty);
 }
 

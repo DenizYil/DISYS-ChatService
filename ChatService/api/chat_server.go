@@ -15,15 +15,13 @@ type Server struct {
 
 var clients []Peer_JoinServer = make([]Peer_JoinServer, 0)
 
+var currentHolder string = ""
 var queue []string = make([]string, 0)
 
 var mutex sync.Mutex
 var ctx context.Context = context.TODO()
 
-var currentHolder string = ""
-
 func (s *Server) Broadcast(ctx context.Context, message *Message) (*Empty, error) {
-
 	for _, client := range clients {
 		client.Send(message)
 	}
@@ -32,7 +30,6 @@ func (s *Server) Broadcast(ctx context.Context, message *Message) (*Empty, error
 }
 
 func (s *Server) Join(message *JoinMessage, stream Peer_JoinServer) error {
-
 	log.Printf("%s has connected to the server!", message.User)
 
 	clients = append(clients, stream)
@@ -72,7 +69,7 @@ func (s *Server) Retrieve(ctx context.Context, msg *RetrieveMessage) (*ResponseM
 
 	for i, name := range queue {
 		if msg.User == name {
-			return &ResponseMessage{Message: fmt.Sprintf("You are already in the queue... There are %s/%s people in front of you.", strconv.Itoa(len(queue)-(i+1)), strconv.Itoa(len(queue)))}, nil
+			return &ResponseMessage{Message: fmt.Sprintf("You are already in the queue... There are %s people in front of you.", strconv.Itoa(len(queue)-(i+1)))}, nil
 		}
 	}
 

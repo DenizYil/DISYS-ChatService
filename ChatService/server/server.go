@@ -9,7 +9,7 @@ import (
 )
 
 func main() {
-	log.Print("Loading Chitty-Chat service now...")
+	log.Print("Loading Mutual Exclusion Distribution service now...")
 
 	listener, err := net.Listen("tcp", "localhost:9000")
 
@@ -27,8 +27,9 @@ func main() {
 	api.RegisterPeerServer(grpcServer, &s)
 
 	log.Print("===============================================================================")
-	log.Print("                            Welcome to Chitty-Chat!                            ")
-	log.Print("            Users can connect at any time and api with each other!            ")
+	log.Print(" ")
+	log.Print("             Welcome to the Mutual Exclusion Destribution service!             ")
+	log.Print(" ")
 	log.Print("===============================================================================")
 
 	err = grpcServer.Serve(listener)
